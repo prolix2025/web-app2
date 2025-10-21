@@ -1,151 +1,255 @@
-// ===== Backend URL =====
-const API_BASE = ""; // same-origin; backend and frontend are served together;
-// ===== Clock =====
-const clockEl = document.getElementById('clock');
-function tick() {
-  const d = new Date();
-  clockEl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+/* ===== Config ===== */
+const API_BASE = ""; // same-origin; use relative paths like '/extract'
+const DRAFT_KEY = "invoiceFormDraft_v2";
+
+/* ===== DOM ===== */
+const els = {
+  clock: document.getElementById("clock"),
+  year: document.getElementById("year"),
+  status: document.getElementById("status"),
+
+  dropzone: document.getElementById("dropzone"),
+  fileInput: document.getElementById("file-input"),
+  dzPlaceholder: document.getElementById("dz-placeholder"),
+  preview: document.getElementById("preview"),
+  imgPreview: document.getElementById("img-preview"),
+  pdfPreview: document.getElementById("pdf-preview"),
+
+  form: document.getElementById("details-form"),
+  btnExtract: document.getElementById("btn-extract"),
+  btnClear: document.getElementById("btn-clear"),
+  btnSaveDraft: document.getElementById("btn-save-draft"),
+  btnLoadDraft: document.getElementById("btn-load-draft"),
+  btnClearDraft: document.getElementById("btn-clear-draft"),
+
+  toastTpl: document.getElementById("toast-template"),
+};
+
+let currentObjectUrl = null;
+
+/* ===== Utils ===== */
+function setStatus(msg, isError = false) {
+  els.status.textContent = msg || "";
+  els.status.style.color = isError ? "#fca5a5" : "#cfd6df";
 }
-if (clockEl) { tick(); setInterval(tick, 1000 * 15); }
 
-// ===== Elements =====
-const dropzone   = document.getElementById('dropzone');
-const fileInput  = document.getElementById('file');
-const preview    = document.getElementById('preview');
-const imgPreview = document.getElementById('imgPreview');
-const pdfPreview = document.getElementById('pdfPreview');
-const placeholder = document.getElementById('placeholder');
+function showToast(text) {
+  const node = els.toastTpl.content.firstElementChild.cloneNode(true);
+  node.textContent = text;
+  document.body.appendChild(node);
+  setTimeout(() => node.remove(), 2500);
+}
 
-const form      = document.getElementById('detailsForm');
-const btnExtract = document.getElementById('btn1'); // Left panel button 1
-const btnClear   = document.getElementById('btn2'); // Left panel button 2
-const btnSaveDraft = document.getElementById('saveDraft');
-
-// ===== Preview helpers =====
-function showPreview(file) {
-  const url = URL.createObjectURL(file);
-  const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-
-  imgPreview.style.display = isPDF ? 'none' : 'block';
-  pdfPreview.style.display = isPDF ? 'block' : 'none';
-
-  if (isPDF) {
-    // PDFs: fill the dotted area
-    pdfPreview.src = url;
-  } else {
-    // Images: contain within the dotted area
-    imgPreview.src = url;
+function revokePreviewUrl() {
+  if (currentObjectUrl) {
+    URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = null;
   }
+}
 
-  preview.classList.add('active');
-  placeholder.style.display = 'none';
+function isAllowedFile(file) {
+  const ok = ["application/pdf", "image/png", "image/jpeg"];
+  return file && ok.includes(file.type);
+}
+
+/* ===== Clock ===== */
+function updateClock() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  els.clock.textContent = `${hh}:${mm}`;
+}
+function initClock() {
+  updateClock();
+  setInterval(updateClock, 15_000);
+  els.year.textContent = String(new Date().getFullYear());
+}
+
+/* ===== Preview ===== */
+function showPreview(file) {
+  revokePreviewUrl();
+  const url = URL.createObjectURL(file);
+  currentObjectUrl = url;
+
+  els.dzPlaceholder.hidden = true;
+  els.preview.hidden = false;
+
+  if (file.type === "application/pdf") {
+    els.imgPreview.hidden = true;
+    els.pdfPreview.hidden = false;
+    els.pdfPreview.src = url;
+    els.pdfPreview.type = "application/pdf";
+  } else {
+    els.pdfPreview.hidden = true;
+    els.imgPreview.hidden = false;
+    els.imgPreview.src = url;
+    els.imgPreview.alt = `Preview of ${file.name}`;
+  }
 }
 
 function clearPreview() {
-  if (fileInput) fileInput.value = '';
-  imgPreview.removeAttribute('src');
-  pdfPreview.removeAttribute('src');
-  preview.classList.remove('active');
-  placeholder.style.display = '';
+  revokePreviewUrl();
+  els.preview.hidden = true;
+  els.imgPreview.hidden = true;
+  els.pdfPreview.hidden = true;
+  els.imgPreview.removeAttribute("src");
+  els.pdfPreview.removeAttribute("src");
+  els.dzPlaceholder.hidden = false;
 }
 
-// ===== Drag & drop + file input =====
-if (dropzone) {
-  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
-  dropzone.addEventListener('drop', (e) => {
-    e.preventDefault(); dropzone.classList.remove('drag');
-    const file = e.dataTransfer.files?.[0];
-    if (file) { fileInput.files = e.dataTransfer.files; showPreview(file); }
-  });
-  dropzone.addEventListener('click', () => fileInput.click());
+/* ===== Drafts ===== */
+function saveDraft() {
+  const data = Object.fromEntries(new FormData(els.form).entries());
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  showToast("Draft saved");
+}
+function loadDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) { showToast("No draft found"); return; }
+  const data = JSON.parse(raw);
+  for (const [k, v] of Object.entries(data)) {
+    const el = els.form.elements.namedItem(k);
+    if (el) el.value = v;
+  }
+  showToast("Draft loaded");
+}
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  showToast("Draft cleared");
 }
 
-if (fileInput) {
-  fileInput.addEventListener('change', (e) => {
-    const file = e.target.files?.[0];
-    if (file) showPreview(file);
-  });
-}
+/* ===== Upload / Extract ===== */
+async function extract() {
+  const file = els.fileInput.files?.[0];
+  if (!file) {
+    setStatus("Please select a file first.", true);
+    showToast("No file selected");
+    return;
+  }
+  if (!isAllowedFile(file)) {
+    setStatus(`Unsupported type: ${file.type || "unknown"}`, true);
+    showToast("Only PDF, PNG, JPG are supported");
+    return;
+  }
 
-// ===== Left control panel actions =====
-if (btnClear) btnClear.addEventListener('click', clearPreview);
+  const formData = new FormData();
+  formData.append("file", file, file.name);
 
-if (btnExtract) btnExtract.addEventListener('click', async () => {
-  const file = fileInput?.files?.[0];
-  if (!file) { alert('Please upload an invoice first.'); return; }
-
+  els.btnExtract.disabled = true;
+  setStatus("Uploading…");
   try {
-    // Disable buttons while working (optional)
-    btnExtract.disabled = true; btnExtract.textContent = "Extracting…";
-
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-
     const res = await fetch(`${API_BASE}/extract`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Backend error ${res.status}: ${text}`);
+      const txt = await res.text().catch(() => "");
+      throw new Error(`Server responded ${res.status}: ${txt || res.statusText}`);
     }
 
-    const data = await res.json();
-    hydrateForm(data); // already defined in your app.js
+    const json = await res.json();
 
-    // Optional: give quick feedback
-    console.log('Extracted fields:', data);
+    // Map fields if present
+    const map = [
+      "invoice_date",
+      "invoice_amount",
+      "btw_amount",
+      "btw_number",
+      "kvk",
+      "supplier",
+      "notes",
+    ];
+    for (const key of map) {
+      if (key in json) {
+        const el = els.form.elements.namedItem(key);
+        if (el) el.value = json[key] ?? "";
+      }
+    }
+
+    setStatus("Extraction complete.");
+    showToast("Fields filled from extraction");
   } catch (err) {
     console.error(err);
-    alert("Extraction failed. Check console for details.");
+    setStatus(String(err.message || err), true);
+    showToast("Extraction failed");
   } finally {
-    btnExtract.disabled = false; btnExtract.textContent = "Extract with AI";
-  }
-});
-
-function hydrateForm(data) {
-  if (!data || !form) return;
-  const map = {
-    invoice_date: data.invoice_date,
-    invoice_amount: data.invoice_amount,
-    btw_amount: data.btw_amount,
-    btw_number: data.btw_number,
-    kvk: data.kvk,
-    supplier: data.supplier,
-    notes: data.notes
-  };
-  Object.entries(map).forEach(([k, v]) => {
-    if (v == null) return;
-    const el = form.elements.namedItem(k);
-    if (el) el.value = v;
-  });
-}
-
-// ===== Draft save/restore =====
-if (btnSaveDraft && form) {
-  btnSaveDraft.addEventListener('click', () => {
-    localStorage.setItem('invoiceFormDraft', JSON.stringify(Object.fromEntries(new FormData(form))));
-  });
-}
-
-if (form) {
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const payload = Object.fromEntries(new FormData(form));
-    console.log('Submit payload', payload);
-  });
-
-  // Restore draft if present
-  const draft = localStorage.getItem('invoiceFormDraft');
-  if (draft) {
-    try {
-      const data = JSON.parse(draft);
-      Object.entries(data).forEach(([k, v]) => {
-        const el = form.querySelector(`[name="${k}"]`);
-        if (el) el.value = v;
-      });
-    } catch {}
+    els.btnExtract.disabled = false;
   }
 }
+
+/* ===== Clear ===== */
+function clearAll() {
+  els.form.reset();
+  clearPreview();
+  setStatus("Cleared.");
+}
+
+/* ===== Dropzone wiring ===== */
+function wireDropzone() {
+  const dz = els.dropzone;
+
+  dz.addEventListener("click", () => els.fileInput.click());
+  dz.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      els.fileInput.click();
+    }
+  });
+
+  ["dragenter", "dragover"].forEach((ev) =>
+    dz.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dz.classList.add("dragover");
+    })
+  );
+  ["dragleave", "drop"].forEach((ev) =>
+    dz.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dz.classList.remove("dragover");
+    })
+  );
+
+  dz.addEventListener("drop", (e) => {
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    if (!isAllowedFile(file)) {
+      setStatus("Unsupported file type.", true);
+      showToast("Only PDF, PNG, JPG are supported");
+      return;
+    }
+    els.fileInput.files = e.dataTransfer.files; // keep it in input
+    showPreview(file);
+    setStatus(`Loaded: ${file.name}`);
+  });
+
+  els.fileInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isAllowedFile(file)) {
+      setStatus("Unsupported file type.", true);
+      showToast("Only PDF, PNG, JPG are supported");
+      els.fileInput.value = "";
+      return;
+    }
+    showPreview(file);
+    setStatus(`Loaded: ${file.name}`);
+  });
+}
+
+/* ===== Init ===== */
+function init() {
+  initClock();
+  wireDropzone();
+
+  els.btnExtract.addEventListener("click", extract);
+  els.btnClear.addEventListener("click", clearAll);
+
+  els.btnSaveDraft.addEventListener("click", saveDraft);
+  els.btnLoadDraft.addEventListener("click", loadDraft);
+  els.btnClearDraft.addEventListener("click", clearDraft);
+}
+
+document.addEventListener("DOMContentLoaded", init);
