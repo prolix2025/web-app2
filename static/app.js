@@ -1,5 +1,5 @@
 // ===== Backend URL =====
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = ""; // same-origin; backend and frontend are served together;
 // ===== Clock =====
 const clockEl = document.getElementById('clock');
 function tick() {
