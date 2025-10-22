@@ -1,5 +1,5 @@
 /* ===== Config ===== */
-const API_BASE = ""; // same-origin; use relative paths like '/extract'
+const API_BASE = "/api"; // same-origin; use relative paths like '/extract'
 const DRAFT_KEY = "invoiceFormDraft_v2";
 
 /* ===== DOM ===== */
