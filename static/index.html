@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Invoice Extractor • Xavora</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link rel="icon" href="{{ url_for('static', filename='assets/logo.jpg') }}" />
 </head>
 <body>
   <!-- Top bar -->
@@ -135,6 +135,6 @@
     <div class="toast" role="status" aria-live="polite"></div>
   </template>
 
-  <script src="./app.js" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>
