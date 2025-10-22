@@ -1,0 +1,141 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Invoice Extractor • Xavora</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link rel="icon" href="{{ url_for('static', filename='assets/logo.jpg') }}" />
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🧾</span>
+      <span class="brand-text">Invoice Extractor</span>
+      <span class="brand-dot">•</span>
+      <span class="brand-sub">Xavora</span>
+    </div>
+    <div class="topbar-right">
+      <span class="badge" id="ai-ready">AI ready</span>
+      <time id="clock" aria-live="polite">--:--</time>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <main class="shell" role="main">
+    <!-- Left: Actions -->
+    <section class="panel panel--actions" aria-labelledby="actions-title">
+      <h2 id="actions-title" class="panel-title">Controls</h2>
+      <div class="actions">
+        <button id="btn-extract" class="btn btn--primary" type="button">
+          <span class="btn-ico" aria-hidden="true">✨</span> Extract with AI
+        </button>
+        <button id="btn-clear" class="btn btn--ghost" type="button">
+          <span class="btn-ico" aria-hidden="true">🧹</span> Clear
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="helper">
+        <h3 class="helper-title">Draft</h3>
+        <div class="helper-actions">
+          <button id="btn-save-draft" class="chip" type="button" title="Save form to this browser">
+            Save draft
+          </button>
+          <button id="btn-load-draft" class="chip" type="button" title="Load saved draft">
+            Load draft
+          </button>
+          <button id="btn-clear-draft" class="chip chip--danger" type="button" title="Delete saved draft">
+            Clear draft
+          </button>
+        </div>
+        <p class="helper-note">Drafts are stored only in your browser (localStorage).</p>
+      </div>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </section>
+
+    <!-- Center: Dropzone + Preview -->
+    <section class="panel panel--center" aria-labelledby="dropzone-title">
+      <h2 id="dropzone-title" class="sr-only">Upload invoice</h2>
+
+      <div id="dropzone"
+           class="dropzone"
+           role="button"
+           tabindex="0"
+           aria-label="Invoice drop zone. Click to browse or drop a PDF, JPG, or PNG.">
+        <input id="file-input" class="sr-only" type="file"
+               accept="application/pdf,image/png,image/jpeg" />
+        <div id="dz-placeholder" class="dz-placeholder">
+          <span class="dz-ico" aria-hidden="true">📄</span>
+          <p class="dz-title">Drop your invoice here</p>
+          <p class="dz-sub">PDF, PNG, or JPG • up to ~10 MB</p>
+          <p class="dz-browse"><span class="link">Click to browse</span></p>
+        </div>
+
+        <div id="preview" class="preview" hidden>
+          <img id="img-preview" class="preview-img" alt="Image preview" hidden />
+          <embed id="pdf-preview" class="preview-pdf" type="application/pdf" hidden />
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Extracted details form -->
+    <section class="panel panel--details" aria-labelledby="details-title">
+      <h2 id="details-title" class="panel-title">Details</h2>
+
+      <form id="details-form" autocomplete="off" novalidate>
+        <div class="field">
+          <label for="invoice_date">invoice date</label>
+          <input id="invoice_date" name="invoice_date" type="date" inputmode="none" />
+        </div>
+
+        <div class="field two-col">
+          <div>
+            <label for="invoice_amount">invoice amount</label>
+            <input id="invoice_amount" name="invoice_amount" type="text" inputmode="decimal" placeholder="0.00" />
+          </div>
+          <div>
+            <label for="btw_amount">btw amount</label>
+            <input id="btw_amount" name="btw_amount" type="text" inputmode="decimal" placeholder="0.00" />
+          </div>
+        </div>
+
+        <div class="field two-col">
+          <div>
+            <label for="btw_number">btw number</label>
+            <input id="btw_number" name="btw_number" type="text" placeholder="NL…B01" />
+          </div>
+          <div>
+            <label for="kvk">kvk</label>
+            <input id="kvk" name="kvk" type="text" placeholder="12345678" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="supplier">supplier</label>
+          <input id="supplier" name="supplier" type="text" placeholder="Company BV" />
+        </div>
+
+        <div class="field">
+          <label for="notes">notes</label>
+          <textarea id="notes" name="notes" rows="5" placeholder="Auto-extracted notes…"></textarea>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Pravesh Parbhoe</p>
+  </footer>
+
+  <template id="toast-template">
+    <div class="toast" role="status" aria-live="polite"></div>
+  </template>
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
